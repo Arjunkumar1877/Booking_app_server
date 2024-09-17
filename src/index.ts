@@ -1,6 +1,8 @@
-import express, {Express, Request, Response} from 'express';
+import express, {Express} from 'express';
 import cors from 'cors';
-import "dotenv/config"
+import "dotenv/config";
+import { connectDb } from './utils/database';
+import userRoutes from './routes/userRoute';
 
 const app: Express = express();
 
@@ -9,10 +11,18 @@ app.use(express.urlencoded({extended: true}));
 app.use(cors());
 
 
-app.get("/api/test", async(req: Request, res: Response)=>{
- res.json({message: "Hello from expres"})
-})
 
+
+
+connectDb()
+
+app.use("/user", userRoutes)
+
+
+// console.log(app.locals)
 app.listen(7000, ()=>{
-    console.log("Server connected")
-})
+    console.log("Server connected on 7000");
+});
+
+
+
