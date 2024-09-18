@@ -6,6 +6,7 @@ export type UserType = {
     password?: string;
     firstName: string;
     lastName: string;
+    otp?: string;
 }
 
 
@@ -26,7 +27,11 @@ const userSchema = new mongoose.Schema({
     lastName: {
         type: String,
         required: true
+    },
+    otp: {
+        type: String
     }
+
 });
 
 
