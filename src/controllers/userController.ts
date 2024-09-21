@@ -16,6 +16,7 @@ class UserController {
   private async findUser(key: string, value: string): Promise<UserType | null> {
     return await UserModel.findOne({ [key]: value });
   }
+  
 
   public registerUser = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -187,7 +188,42 @@ class UserController {
     }
   };
 
-  
+
+  public resendOtp = async(req: Request, res: Response): Promise<any>=>{
+  try {
+    let user: UserType | null = await this.findUser(
+      req.params.key,
+      req.body.email
+    );
+
+    const OTP: string = otp();
+
+    if(user){
+      const updateuser = await UserModel.updateOne({email: user.email},{
+        $set: {
+          otp: OTP
+        }
+      },{new: true});
+
+      if(updateuser){
+      const emailSend = await SendEmailOtp(user.email, OTP);
+         if(emailSend.success){
+          res.status(200).json({message: "succesfully updated and otp send to email", success: true});
+         }else{
+          res.status(400).json({message: "Error sending email", success: false});
+         }
+      }else{
+        res.status(400).json({message: "Errror sending ", success: false});
+      }
+
+    }else{
+      res.status(400).json({message: "No usaer was found to update the otp", success: false});
+    }
+
+  } catch (error) {
+    res.status(500).json({message: error, success: false});
+  }
+  }
 }
 
 export const userController = new UserController();
