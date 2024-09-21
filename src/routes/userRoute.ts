@@ -8,6 +8,6 @@ router.post("/register/:key", userController.registerUser);
 
 router.post("/verify_otp/:key", userController.verifyUser);
 
-
+router.post("/login/:key", userController.loginUser);
 
 export default router

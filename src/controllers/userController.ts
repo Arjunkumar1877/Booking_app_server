@@ -2,6 +2,15 @@ import { Request, Response } from "express";
 import { UserModel, UserType } from "../models/userModel";
 import { SendEmailOtp } from "../services/nodemailer";
 import { otp } from "../services/otpGenerate";
+import bcrypt from "bcryptjs";
+import { jwtSign } from "../services/jwtServives";
+
+export type ResponseUserType = {
+  _id?: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+};
 
 class UserController {
   private async findUser(key: string, value: string): Promise<UserType | null> {
@@ -22,7 +31,7 @@ class UserController {
       } else if (user && !user.verified) {
         const userdeleted = await UserModel.findOneAndDelete({ _id: user._id });
         if (userdeleted) {
-          console.log("un verified user deleted sucessfully");
+          console.log("unverified user deleted sucessfully");
         }
       }
       const OTP: string = otp();
@@ -32,7 +41,7 @@ class UserController {
       });
 
       if (newUserCreate) {
-        let savedData: UserType = {
+        let savedData: ResponseUserType = {
           _id: newUserCreate._id,
           email: newUserCreate?.email,
           firstName: newUserCreate.firstName,
@@ -41,29 +50,28 @@ class UserController {
 
         const emailSend = await SendEmailOtp(newUserCreate.email, OTP);
         if (emailSend) {
-          res
-            .status(200)
-            .json({
-              message:
-                "User data successfully saved and an otp was send to the email",
-              data: savedData,
-              success: true
-            });
+          res.status(200).json({
+            message:
+              "User data successfully saved and an otp was send to the email",
+            data: savedData,
+            success: true,
+          });
         } else {
-          res
-            .status(200)
-            .json({
-              message: "User data successfully saved but failed to send email",
-              data: savedData,
-              success: false
-            });
+          res.status(200).json({
+            message: "User data successfully saved but failed to send email",
+            data: savedData,
+            success: false,
+          });
         }
       }
     } catch (error) {
       console.log(error);
-      res.status(500).send({ message: "internal server error", data: null, success: false });
+      res
+        .status(500)
+        .send({ message: "internal server error", data: null, success: false });
     }
   };
+
 
   public verifyUser = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -91,27 +99,95 @@ class UserController {
               .json({ message: "User succesfully verified", success: true });
           } else {
             res
-              .status(200)
+              .status(400)
               .json({ message: "Verification failed", success: false });
           }
         } else {
-          res
-            .status(200)
-            .json({
-              message:
-                "Otp you have entered is incorrect please enter the correct otp",
-              success: false,
-            });
+          res.status(400).json({
+            message:
+              "Otp you have entered is incorrect please enter the correct otp",
+            success: false,
+          });
         }
       } else {
         res
-          .status(200)
+          .status(400)
           .json({ message: "No user found to verify", success: false });
       }
     } catch (error) {
       res.status(500).json({ message: error, data: null });
     }
   };
+
+
+  public loginUser = async (req: Request, res: Response): Promise<any> => {
+    try {
+      let user: UserType | null = await this.findUser(
+        req.params.key,
+        req.body.email
+      );
+
+      if (user) {
+        if (user.verified) {
+          if (user.email === req.body.email) {
+            const checkPassword = await bcrypt.compare(
+              req.body.password,
+              user?.password
+            );
+            if (checkPassword) {
+              let userData: ResponseUserType = {
+                _id: user._id,
+                email: user?.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+              };
+                 const token = jwtSign(user._id as string);
+                 console.log(token)
+                 res
+                .status(200)
+                .cookie("auth_token", token, {
+                  httpOnly: true,
+                  secure: false
+                })
+                .json({
+                  message: "Successfully loggedIn",
+                  success: true,
+                  data: userData,
+                });
+            } else {
+              res
+                .status(400)
+                .json({
+                  message: "Invalid credentials.",
+                  success: false,
+                  data: null,
+                });
+            }
+          } else {
+            res
+              .status(400)
+              .json({
+                message: "Invalid credentials",
+                success: false,
+                data: null,
+              });
+          }
+        } else {
+          res
+            .status(400)
+            .json({ message: "User don't exist", success: false, data: null });
+        }
+      } else {
+        res
+          .status(400)
+          .json({ message: "User don't exist", success: false, data: null });
+      }
+    } catch (error) {
+      res.status(500).json({ message: error, success: false, data: null });
+    }
+  };
+
+  
 }
 
 export const userController = new UserController();
