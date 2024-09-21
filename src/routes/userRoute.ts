@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.post("/register/:key", userController.registerUser);
 
+router.post("/verify_otp/:key", userController.verifyUser);
+
 
 
 export default router
